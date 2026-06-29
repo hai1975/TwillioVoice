@@ -133,12 +133,21 @@ class TwilioHandler:
                     logger.info("Stream bắt đầu: %s", self.stream_sid)
                     await flush_output_buffer()
                     silence_task = asyncio.create_task(silence_pumper())
-                    if not greeting_sent:
-                        await text_input_queue.put(self.greeting)
-                        greeting_sent = True
+                    # Fallback: gửi greeting nếu chưa có media sau 1 giây
+                    async def delayed_greeting():
+                        nonlocal greeting_sent
+                        await asyncio.sleep(1.0)
+                        if not greeting_sent:
+                            await text_input_queue.put(self.greeting)
+                            greeting_sent = True
+                            logger.info("Gửi greeting (fallback timeout)")
+
+                    asyncio.create_task(delayed_greeting())
 
                 elif event == "media":
                     media_in_count += 1
+                    if media_in_count == 1:
+                        logger.info("Nhận audio đầu tiên từ caller")
                     payload = data["media"]["payload"]
                     mulaw_data = base64.b64decode(payload)
                     pcm_data = audioop.ulaw2lin(mulaw_data, 2)
@@ -146,6 +155,12 @@ class TwilioHandler:
                         pcm_data, 2, 1, 8000, 16000, self._upsample_state
                     )
                     await audio_input_queue.put(resampled_data)
+
+                    # Chờ audio pipeline ổn định rồi mới gửi greeting
+                    if not greeting_sent and media_in_count >= 10:
+                        await text_input_queue.put(self.greeting)
+                        greeting_sent = True
+                        logger.info("Đã gửi greeting sau %d gói audio", media_in_count)
 
                 elif event == "stop":
                     logger.info(
