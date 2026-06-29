@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: twilliovoice
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: TWILIO_APP_HOST
+        value: twilliovoice.onrender.com
+      - key: MODEL
+        value: gemini-2.5-flash-live-preview
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false

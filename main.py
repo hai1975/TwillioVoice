@@ -40,6 +40,11 @@ GREETING = os.getenv(
 )
 
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "twilliovoice", "health": "/health"}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "model": MODEL}
