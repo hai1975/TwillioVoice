@@ -10,7 +10,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.8"
       - key: TWILIO_APP_HOST
-        value: twilliovoice.onrender.com
+        value: twilliovoice-1uja.onrender.com
       - key: MODEL
         value: gemini-2.5-flash-live-preview
       - key: GEMINI_API_KEY
