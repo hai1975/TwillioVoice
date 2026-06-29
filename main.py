@@ -30,7 +30,7 @@ app = FastAPI(
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "gemini-2.5-flash")
 LIVE_MODEL = os.getenv("MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
-VOICE_MODE = os.getenv("VOICE_MODE", "conversationrelay").lower()
+VOICE_MODE = os.getenv("VOICE_MODE", "live").lower()
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
@@ -39,12 +39,12 @@ TWILIO_APP_HOST = os.getenv("TWILIO_APP_HOST", "localhost:8000")
 SYSTEM_INSTRUCTION = os.getenv(
     "SYSTEM_INSTRUCTION",
     "You are the friendly phone receptionist for VM Clinic. "
-    "Answer in clear English, keep responses short and natural for a phone call. "
-    "Do not use special characters, bullet points, or emojis.",
+    "Reply in the same language the caller uses (Vietnamese, English, etc.). "
+    "Keep responses short and natural for a phone call.",
 )
 GREETING = os.getenv(
     "GREETING",
-    "Thanks for calling VM Clinic. Can I help you today?",
+    "Greet the caller warmly as VM Clinic receptionist and ask how you can help today.",
 )
 VOICE_NAME = os.getenv("VOICE_NAME", "Puck")
 CR_LANGUAGE = os.getenv("CR_LANGUAGE", "en-US")

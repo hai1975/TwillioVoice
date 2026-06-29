@@ -12,7 +12,7 @@ services:
       - key: TWILIO_APP_HOST
         value: twilliovoice-1uja.onrender.com
       - key: VOICE_MODE
-        value: conversationrelay
+        value: live
       - key: CHAT_MODEL
         value: gemini-2.5-flash
       - key: MODEL
