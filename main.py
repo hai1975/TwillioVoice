@@ -74,6 +74,9 @@ async def health():
         "mode": VOICE_MODE,
         "chat_model": CHAT_MODEL,
         "live_model": LIVE_MODEL,
+        "language": CR_LANGUAGE,
+        "voice": CR_VOICE,
+        "greeting": GREETING[:80],
     }
 
 
