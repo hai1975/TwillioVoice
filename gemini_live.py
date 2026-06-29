@@ -51,75 +51,85 @@ class GeminiLive:
             ),
         )
 
-        async with self.client.aio.live.connect(
-            model=self.model, config=config
-        ) as session:
-            logger.info("Gemini Live session đã kết nối")
+        try:
+            async with self.client.aio.live.connect(
+                model=self.model, config=config
+            ) as session:
+                logger.info("Gemini Live session đã kết nối (model=%s)", self.model)
 
-            async def send_audio_loop():
-                while True:
-                    try:
-                        audio_data = await asyncio.wait_for(
-                            audio_input_queue.get(), timeout=0.1
-                        )
-                        if audio_data is None:
-                            break
-                        await session.send_realtime_input(
-                            audio=types.Blob(
-                                data=audio_data,
-                                mime_type="audio/pcm;rate=16000",
+                async def send_audio_loop():
+                    while True:
+                        try:
+                            audio_data = await asyncio.wait_for(
+                                audio_input_queue.get(), timeout=0.1
                             )
-                        )
-                    except asyncio.TimeoutError:
-                        continue
-                    except Exception as e:
-                        logger.error("Lỗi gửi audio: %s", e)
-                        break
-
-            async def send_text_loop():
-                while True:
-                    try:
-                        text = await asyncio.wait_for(
-                            text_input_queue.get(), timeout=0.1
-                        )
-                        if text is None:
+                            if audio_data is None:
+                                break
+                            await session.send_realtime_input(
+                                audio=types.Blob(
+                                    data=audio_data,
+                                    mime_type="audio/pcm;rate=16000",
+                                )
+                            )
+                        except asyncio.TimeoutError:
+                            continue
+                        except Exception as e:
+                            logger.error("Lỗi gửi audio: %s", e)
                             break
-                        await session.send_realtime_input(text=text)
-                    except asyncio.TimeoutError:
-                        continue
-                    except Exception as e:
-                        logger.error("Lỗi gửi text: %s", e)
-                        break
 
-            send_audio_task = asyncio.create_task(send_audio_loop())
-            send_text_task = asyncio.create_task(send_text_loop())
+                async def send_text_loop():
+                    while True:
+                        try:
+                            text = await asyncio.wait_for(
+                                text_input_queue.get(), timeout=0.1
+                            )
+                            if text is None:
+                                break
+                            await session.send_realtime_input(text=text)
+                        except asyncio.TimeoutError:
+                            continue
+                        except Exception as e:
+                            logger.error("Lỗi gửi text: %s", e)
+                            break
 
-            try:
-                async for response in session.receive():
-                    if (
-                        response.server_content
-                        and response.server_content.interrupted
-                        and audio_interrupt_callback
-                    ):
-                        if inspect.iscoroutinefunction(audio_interrupt_callback):
-                            await audio_interrupt_callback()
-                        else:
-                            audio_interrupt_callback()
+                send_audio_task = asyncio.create_task(send_audio_loop())
+                send_text_task = asyncio.create_task(send_text_loop())
 
-                    audio_data = self._extract_audio(response)
-                    if audio_data and audio_output_callback:
-                        if inspect.iscoroutinefunction(audio_output_callback):
-                            await audio_output_callback(audio_data)
-                        else:
-                            audio_output_callback(audio_data)
+                try:
+                    async for response in session.receive():
+                        if (
+                            response.server_content
+                            and response.server_content.interrupted
+                            and audio_interrupt_callback
+                        ):
+                            if inspect.iscoroutinefunction(audio_interrupt_callback):
+                                await audio_interrupt_callback()
+                            else:
+                                audio_interrupt_callback()
 
-            except Exception as e:
-                logger.error("Lỗi nhận response: %s\n%s", e, traceback.format_exc())
-            finally:
-                await audio_input_queue.put(None)
-                await text_input_queue.put(None)
-                send_audio_task.cancel()
-                send_text_task.cancel()
+                        audio_data = self._extract_audio(response)
+                        if audio_data and audio_output_callback:
+                            if inspect.iscoroutinefunction(audio_output_callback):
+                                await audio_output_callback(audio_data)
+                            else:
+                                audio_output_callback(audio_data)
+
+                except Exception as e:
+                    logger.error("Lỗi nhận response: %s\n%s", e, traceback.format_exc())
+                finally:
+                    await audio_input_queue.put(None)
+                    await text_input_queue.put(None)
+                    send_audio_task.cancel()
+                    send_text_task.cancel()
+
+        except Exception as e:
+            logger.error(
+                "Gemini Live kết nối thất bại (model=%s): %s\n%s",
+                self.model,
+                e,
+                traceback.format_exc(),
+            )
+            raise
 
     @staticmethod
     def _extract_audio(response) -> bytes | None:

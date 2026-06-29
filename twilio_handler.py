@@ -44,6 +44,7 @@ class TwilioHandler:
         audio_input_queue: asyncio.Queue = asyncio.Queue()
         text_input_queue: asyncio.Queue = asyncio.Queue()
         output_buffer = bytearray()
+        gemini_task: asyncio.Task | None = None
 
         async def send_buffered_audio():
             nonlocal output_buffer
@@ -65,7 +66,6 @@ class TwilioHandler:
             if not self.stream_sid:
                 return
 
-            # Hai bước resample: 24kHz → 16kHz → 8kHz (chất lượng tốt hơn)
             intermediate, self._downsample_state_1 = audioop.ratecv(
                 data, 2, 1, 24000, 16000, self._downsample_state_1
             )
@@ -86,15 +86,6 @@ class TwilioHandler:
                     json.dumps({"event": "clear", "streamSid": self.stream_sid})
                 )
 
-        gemini_task = asyncio.create_task(
-            self.gemini_client.start_session(
-                audio_input_queue=audio_input_queue,
-                text_input_queue=text_input_queue,
-                audio_output_callback=audio_output_callback,
-                audio_interrupt_callback=audio_interrupt_callback,
-            )
-        )
-
         try:
             async for message in websocket.iter_text():
                 data = json.loads(message)
@@ -103,6 +94,16 @@ class TwilioHandler:
                 if event == "start":
                     self.stream_sid = data["start"]["streamSid"]
                     logger.info("Stream bắt đầu: %s", self.stream_sid)
+
+                    # Chờ event "start" (có streamSid) rồi mới kết nối Gemini
+                    gemini_task = asyncio.create_task(
+                        self.gemini_client.start_session(
+                            audio_input_queue=audio_input_queue,
+                            text_input_queue=text_input_queue,
+                            audio_output_callback=audio_output_callback,
+                            audio_interrupt_callback=audio_interrupt_callback,
+                        )
+                    )
                     await text_input_queue.put(self.greeting)
 
                 elif event == "media":
@@ -123,8 +124,9 @@ class TwilioHandler:
         finally:
             await audio_input_queue.put(None)
             await text_input_queue.put(None)
-            gemini_task.cancel()
-            try:
-                await gemini_task
-            except asyncio.CancelledError:
-                pass
+            if gemini_task:
+                gemini_task.cancel()
+                try:
+                    await gemini_task
+                except asyncio.CancelledError:
+                    pass

@@ -12,7 +12,7 @@ services:
       - key: TWILIO_APP_HOST
         value: twilliovoice-1uja.onrender.com
       - key: MODEL
-        value: gemini-2.5-flash-live-preview
+        value: gemini-2.5-flash-native-audio-preview-12-2025
       - key: GEMINI_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID

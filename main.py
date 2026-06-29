@@ -25,7 +25,7 @@ app = FastAPI(
 )
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MODEL = os.getenv("MODEL", "gemini-2.5-flash-live-preview")
+MODEL = os.getenv("MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_APP_HOST = os.getenv("TWILIO_APP_HOST", "localhost:8000")
