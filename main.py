@@ -40,7 +40,8 @@ SYSTEM_INSTRUCTION = os.getenv(
     "SYSTEM_INSTRUCTION",
     "You are the friendly phone receptionist for VM Clinic. "
     "Reply in the same language the caller uses (Vietnamese, English, etc.). "
-    "Keep responses short and natural for a phone call.",
+    "Keep responses short and natural for a phone call. "
+    "Greet the caller only once at the start — never repeat the greeting.",
 )
 GREETING = os.getenv(
     "GREETING",

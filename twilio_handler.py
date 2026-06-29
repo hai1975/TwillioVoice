@@ -136,16 +136,6 @@ class TwilioHandler:
                     logger.info("Stream bắt đầu: %s", self.stream_sid)
                     await flush_output_buffer()
                     silence_task = asyncio.create_task(silence_pumper())
-                    # Fallback: gửi greeting nếu chưa có media sau 1 giây
-                    async def delayed_greeting():
-                        nonlocal greeting_sent
-                        await asyncio.sleep(1.0)
-                        if not greeting_sent:
-                            await text_input_queue.put(self.greeting)
-                            greeting_sent = True
-                            logger.info("Gửi greeting (fallback timeout)")
-
-                    asyncio.create_task(delayed_greeting())
 
                 elif event == "media":
                     media_in_count += 1
