@@ -123,7 +123,9 @@ class TwilioHandler:
             async for message in websocket.iter_text():
                 data = json.loads(message)
                 event = data.get("event")
-                logger.info("Twilio event: %s", event)
+
+                if event != "media":
+                    logger.info("Twilio event: %s", event)
 
                 if event == "connected":
                     continue

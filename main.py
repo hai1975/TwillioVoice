@@ -1,14 +1,17 @@
-"""FastAPI server — bridge Twilio Media Streams ⇄ Gemini Live API."""
+"""FastAPI server — Twilio Voice + Google Gemini."""
 
 import logging
 import os
+from xml.sax.saxutils import escape
 
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, Response, WebSocket
 from fastapi.responses import JSONResponse
+from google import genai
 from twilio.rest import Client as TwilioClient
 
+from conversation_relay import ConversationRelayHandler
 from twilio_handler import TwilioHandler
 
 load_dotenv()
@@ -20,61 +23,116 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Twilio Voice ⇄ Gemini Live",
-    description="Cuộc gọi điện thoại 2 chiều với VoiceBot qua Gemini Live API",
+    title="Twilio Voice ⇄ Gemini",
+    description="VoiceBot điện thoại với Google Gemini",
 )
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MODEL = os.getenv("MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
+CHAT_MODEL = os.getenv("CHAT_MODEL", "gemini-2.5-flash")
+LIVE_MODEL = os.getenv("MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+VOICE_MODE = os.getenv("VOICE_MODE", "conversationrelay").lower()
+
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_APP_HOST = os.getenv("TWILIO_APP_HOST", "localhost:8000")
+
 SYSTEM_INSTRUCTION = os.getenv(
     "SYSTEM_INSTRUCTION",
-    "Bạn là trợ lý AI thân thiện. Trả lời bằng tiếng Việt, ngắn gọn và tự nhiên.",
+    "Bạn là trợ lý AI thân thiện. Trả lời bằng tiếng Việt, ngắn gọn và tự nhiên. "
+    "Đây là cuộc gọi điện thoại nên câu trả lời phải ngắn, dễ nghe, không dùng ký tự đặc biệt.",
 )
-VOICE_NAME = os.getenv("VOICE_NAME", "Puck")
 GREETING = os.getenv(
     "GREETING",
-    "Chào người gọi bằng tiếng Việt và hỏi bạn có thể giúp gì.",
+    "Xin chào! Tôi là trợ lý AI. Bạn cần tôi giúp gì?",
 )
+VOICE_NAME = os.getenv("VOICE_NAME", "Puck")
+CR_LANGUAGE = os.getenv("CR_LANGUAGE", "vi-VN")
+CR_VOICE = os.getenv("CR_VOICE", "foH7s9fX31wFFH2yqrFa")
+
+gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+
+def _host() -> str:
+    return TWILIO_APP_HOST.replace("https://", "").replace("http://", "")
 
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "twilliovoice", "health": "/health"}
+    return {
+        "status": "ok",
+        "service": "twilliovoice",
+        "mode": VOICE_MODE,
+        "health": "/health",
+    }
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": MODEL}
+    return {
+        "status": "ok",
+        "mode": VOICE_MODE,
+        "chat_model": CHAT_MODEL,
+        "live_model": LIVE_MODEL,
+    }
 
 
 @app.post("/twilio/inbound")
 async def twilio_inbound():
-    """Webhook khi có cuộc gọi đến số Twilio."""
-    host = TWILIO_APP_HOST.replace("https://", "").replace("http://", "")
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+    """Webhook cuộc gọi đến."""
+    host = _host()
+
+    if VOICE_MODE == "live":
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
         <Stream url="wss://{host}/twilio/stream" />
     </Connect>
 </Response>"""
+    else:
+        greeting = escape(GREETING)
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <ConversationRelay
+            url="wss://{host}/twilio/relay"
+            welcomeGreeting="{greeting}"
+            language="{CR_LANGUAGE}"
+            ttsProvider="ElevenLabs"
+            voice="{CR_VOICE}"
+        />
+    </Connect>
+</Response>"""
+
     return Response(content=twiml, media_type="application/xml")
+
+
+@app.websocket("/twilio/relay")
+async def twilio_relay(websocket: WebSocket):
+    """ConversationRelay WebSocket — Twilio STT/TTS + Gemini text."""
+    if not gemini_client:
+        await websocket.close(code=1011, reason="GEMINI_API_KEY chưa cấu hình")
+        return
+
+    handler = ConversationRelayHandler(
+        client=gemini_client,
+        model=CHAT_MODEL,
+        system_instruction=SYSTEM_INSTRUCTION,
+    )
+    await handler.handle(websocket)
 
 
 @app.websocket("/twilio/stream")
 async def twilio_stream(websocket: WebSocket):
-    """WebSocket nhận audio stream từ Twilio."""
+    """Media Streams WebSocket — Gemini Live native audio (experimental)."""
     await websocket.accept()
 
     if not GEMINI_API_KEY:
-        await websocket.close(code=1011, reason="GEMINI_API_KEY chưa được cấu hình")
+        await websocket.close(code=1011, reason="GEMINI_API_KEY chưa cấu hình")
         return
 
     handler = TwilioHandler(
         gemini_api_key=GEMINI_API_KEY,
-        model=MODEL,
+        model=LIVE_MODEL,
         system_instruction=SYSTEM_INSTRUCTION,
         voice_name=VOICE_NAME,
         greeting=GREETING,
@@ -92,25 +150,28 @@ async def twilio_stream(websocket: WebSocket):
 
 @app.post("/twilio/outbound")
 async def twilio_outbound(
-    to_number: str = Query(..., description="Số điện thoại người nhận, VD: +84901234567"),
-    from_number: str = Query(..., description="Số Twilio gọi đi, VD: +12025551234"),
+    to_number: str = Query(...),
+    from_number: str = Query(...),
 ):
-    """Gọi ra ngoài và kết nối với Gemini Live (cần bảo mật trong production)."""
     if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN]):
-        return JSONResponse(
-            status_code=500,
-            content={"error": "TWILIO_ACCOUNT_SID và TWILIO_AUTH_TOKEN chưa được cấu hình"},
-        )
+        return JSONResponse(status_code=500, content={"error": "Thiếu Twilio credentials"})
 
-    host = TWILIO_APP_HOST.replace("https://", "").replace("http://", "")
+    host = _host()
     client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-    twiml = f"""<Response>
-    <Connect>
-        <Stream url="wss://{host}/twilio/stream" />
-    </Connect>
-</Response>"""
+    if VOICE_MODE == "live":
+        inner = f'<Stream url="wss://{host}/twilio/stream" />'
+    else:
+        greeting = escape(GREETING)
+        inner = f"""<ConversationRelay
+            url="wss://{host}/twilio/relay"
+            welcomeGreeting="{greeting}"
+            language="{CR_LANGUAGE}"
+            ttsProvider="ElevenLabs"
+            voice="{CR_VOICE}"
+        />"""
 
+    twiml = f"<Response><Connect>{inner}</Connect></Response>"
     call = client.calls.create(to=to_number, from_=from_number, twiml=twiml)
     return {"callSid": call.sid, "status": call.status}
 

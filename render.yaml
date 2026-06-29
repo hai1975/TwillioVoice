@@ -11,8 +11,14 @@ services:
         value: "3.12.8"
       - key: TWILIO_APP_HOST
         value: twilliovoice-1uja.onrender.com
+      - key: VOICE_MODE
+        value: conversationrelay
+      - key: CHAT_MODEL
+        value: gemini-2.5-flash
       - key: MODEL
         value: gemini-2.5-flash-native-audio-preview-12-2025
+      - key: CR_LANGUAGE
+        value: vi-VN
       - key: GEMINI_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID
