@@ -115,6 +115,7 @@ class TwilioHandler:
                 text_input_queue=text_input_queue,
                 audio_output_callback=audio_output_callback,
                 audio_interrupt_callback=audio_interrupt_callback,
+                is_active=lambda: call_active,
             )
         )
         greeting_sent = False
