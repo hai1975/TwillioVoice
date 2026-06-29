@@ -12,6 +12,10 @@ from google import genai
 from twilio.rest import Client as TwilioClient
 
 from conversation_relay import ConversationRelayHandler
+from patient_registration import (
+    REGISTRATION_GREETING,
+    REGISTRATION_SYSTEM_INSTRUCTION,
+)
 from twilio_handler import TwilioHandler
 
 load_dotenv()
@@ -38,14 +42,11 @@ TWILIO_APP_HOST = os.getenv("TWILIO_APP_HOST", "localhost:8000")
 
 SYSTEM_INSTRUCTION = os.getenv(
     "SYSTEM_INSTRUCTION",
-    "You are the friendly phone receptionist for VM Clinic. "
-    "Reply in the same language the caller uses (Vietnamese, English, etc.). "
-    "Keep responses short and natural for a phone call. "
-    "Greet the caller only once at the start — never repeat the greeting.",
+    REGISTRATION_SYSTEM_INSTRUCTION,
 )
 GREETING = os.getenv(
     "GREETING",
-    "Greet the caller warmly as VM Clinic receptionist and ask how you can help today.",
+    REGISTRATION_GREETING,
 )
 VOICE_NAME = os.getenv("VOICE_NAME", "Puck")
 CR_LANGUAGE = os.getenv("CR_LANGUAGE", "en-US")
