@@ -30,7 +30,7 @@ app = FastAPI(
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "gemini-2.5-flash")
 LIVE_MODEL = os.getenv("MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
-VOICE_MODE = os.getenv("VOICE_MODE", "live").lower()
+VOICE_MODE = os.getenv("VOICE_MODE", "conversationrelay").lower()
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
