@@ -18,7 +18,9 @@ services:
       - key: MODEL
         value: gemini-2.5-flash-native-audio-preview-12-2025
       - key: CR_LANGUAGE
-        value: vi-VN
+        value: en-US
+      - key: CR_VOICE
+        value: UgBBYS2sOqTuMpoF3BR0
       - key: GEMINI_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID

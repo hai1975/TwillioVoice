@@ -38,16 +38,17 @@ TWILIO_APP_HOST = os.getenv("TWILIO_APP_HOST", "localhost:8000")
 
 SYSTEM_INSTRUCTION = os.getenv(
     "SYSTEM_INSTRUCTION",
-    "Bạn là trợ lý AI thân thiện. Trả lời bằng tiếng Việt, ngắn gọn và tự nhiên. "
-    "Đây là cuộc gọi điện thoại nên câu trả lời phải ngắn, dễ nghe, không dùng ký tự đặc biệt.",
+    "You are the friendly phone receptionist for VM Clinic. "
+    "Answer in clear English, keep responses short and natural for a phone call. "
+    "Do not use special characters, bullet points, or emojis.",
 )
 GREETING = os.getenv(
     "GREETING",
-    "Xin chào! Tôi là trợ lý AI. Bạn cần tôi giúp gì?",
+    "Thanks for calling VM Clinic. Can I help you today?",
 )
 VOICE_NAME = os.getenv("VOICE_NAME", "Puck")
-CR_LANGUAGE = os.getenv("CR_LANGUAGE", "vi-VN")
-CR_VOICE = os.getenv("CR_VOICE", "foH7s9fX31wFFH2yqrFa")
+CR_LANGUAGE = os.getenv("CR_LANGUAGE", "en-US")
+CR_VOICE = os.getenv("CR_VOICE", "UgBBYS2sOqTuMpoF3BR0")
 
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
