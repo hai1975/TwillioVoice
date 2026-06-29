@@ -56,7 +56,6 @@ async def twilio_inbound():
     host = TWILIO_APP_HOST.replace("https://", "").replace("http://", "")
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="en-US">Connecting you to the AI assistant.</Say>
     <Connect>
         <Stream url="wss://{host}/twilio/stream" />
     </Connect>
@@ -107,7 +106,6 @@ async def twilio_outbound(
     client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
     twiml = f"""<Response>
-    <Say language="en-US">Connecting you to the AI assistant.</Say>
     <Connect>
         <Stream url="wss://{host}/twilio/stream" />
     </Connect>
